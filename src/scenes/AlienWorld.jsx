@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Float, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
@@ -6,21 +6,39 @@ import Omnitrix from '../components/Omnitrix'
 import AlienModel from '../components/AlienModel'
 import ParticleBackground from '../components/ParticleBackground'
 
+function useIsMobile(breakpoint = 900) {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= breakpoint
+  )
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= breakpoint)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [breakpoint])
+
+  return isMobile
+}
+
 // Camera Rig for Smooth Camera Movement
-function CameraRig({ activeSection, mouseReaction }) {
+function CameraRig({ activeSection, mouseReaction, isMobile }) {
   useFrame((state) => {
     let targetZ = 5.5
     let targetX = 0
     let targetY = 0
 
     if (activeSection === 'hero') {
-      targetZ = 4.8
-      targetX = state.pointer.x * 0.4
-      targetY = state.pointer.y * 0.3
+      targetZ = isMobile ? 6.2 : 4.8
+      targetX = isMobile ? 0 : state.pointer.x * 0.4
+      targetY = isMobile ? 0 : state.pointer.y * 0.3
     } else if (activeSection === 'final') {
-      targetZ = 5.0
-      targetX = state.pointer.x * 0.2
-      targetY = state.pointer.y * 0.2
+      targetZ = isMobile ? 6.4 : 5.0
+      targetX = isMobile ? 0 : state.pointer.x * 0.2
+      targetY = isMobile ? 0 : state.pointer.y * 0.2
+    } else if (isMobile) {
+      targetZ = 8.4
+      targetX = 0
+      targetY = 1.15
     } else {
       // Alien viewing mode: offset camera slightly to frame 3D alien nicely on the right
       targetZ = 5.4
@@ -81,6 +99,7 @@ export default function AlienWorld({
   mouseReaction,
   onOmnitrixClick
 }) {
+  const isMobile = useIsMobile()
   const isHeroActive = activeSection === 'hero'
   const isFinalActive = activeSection === 'final'
   const isAlienActive = !isHeroActive && !isFinalActive
@@ -90,9 +109,9 @@ export default function AlienWorld({
       <Canvas
         camera={{ position: [0, 0, 5], fov: 45 }}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-        dpr={[1, 2]}
+        dpr={isMobile ? [1, 1.5] : [1, 2]}
       >
-        <CameraRig activeSection={activeSection} mouseReaction={mouseReaction} />
+        <CameraRig activeSection={activeSection} mouseReaction={mouseReaction} isMobile={isMobile} />
         
         {/* Dynamic Atmospheric Sci-Fi Lighting */}
         <AlienLighting 
@@ -103,14 +122,17 @@ export default function AlienWorld({
 
         {/* Ambient Floating Particle Cloud */}
         <ParticleBackground 
-          count={200} 
+          count={isMobile ? 80 : 200} 
           color={(isHeroActive || isFinalActive) ? "#00ff66" : currentAlien?.themeColor || "#00ff66"} 
         />
 
         {/* 3D Content Groups with Floating Physics */}
         {isAlienActive && (
           <Float speed={1.5} rotationIntensity={0.15} floatIntensity={0.3}>
-            <group position={[1.35, 0.05, 0]}>
+            <group
+              position={isMobile ? [0, 2.1, -1.8] : [1.35, 0.05, 0]}
+              scale={isMobile ? 0.55 : 1}
+            >
               <AlienModel 
                 alienId={currentAlien?.id} 
                 mouseReaction={mouseReaction} 
